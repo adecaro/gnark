@@ -15,9 +15,12 @@ import (
 )
 
 // MaxLogSize bounds log2 of the circuit domain size accepted when decoding a
-// key. It protects decoders against allocation attacks: the FRI evaluation
-// domain has 8·DegreeBound ≈ 16·Size points.
-const MaxLogSize = 20
+// key. It protects decoders against allocation attacks: decoding a verifying
+// key builds the FRI evaluation domain, 8·DegreeBound ≈ 16·Size points, from
+// a header of a few bytes. 2^20 costs about 3 GB, 2^17 about 0.4 GB. Real
+// circuits are far smaller (a 10k-constraint circuit has Size 2^14), so 2^17
+// leaves 8x headroom; raise it only together with a matching limit upstream.
+const MaxLogSize = 17
 
 // readChunk is the number of elements read before growing a slice again, so
 // that memory use tracks the amount of data actually present in the stream.

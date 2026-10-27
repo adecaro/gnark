@@ -172,3 +172,25 @@ func FuzzReadFrom(f *testing.F) {
 		_, _ = pk.ReadFrom(bytes.NewReader(vkData))
 	})
 }
+
+// TestVerifyingKeyRejectsOversizedDomain: a tiny header claiming a huge circuit
+// must be rejected before the FRI domain (gigabytes at 2^20) is allocated.
+func TestVerifyingKeyRejectsOversizedDomain(t *testing.T) {
+	f, _ := newMarshalFixture(t)
+
+	// The first 8 bytes of the encoding are Size, big-endian.
+	for _, logSize := range []uint{18, 20, 40} {
+		bad := bytes.Clone(f.vkBytes)
+		for i := 0; i < 8; i++ {
+			bad[i] = 0
+		}
+		bad[7-logSize/8] = 1 << (logSize % 8)
+
+		vk := plonkfri.NewVerifyingKey(ecc.BN254)
+		_, err := vk.ReadFrom(bytes.NewReader(bad))
+		require.Error(t, err, "Size 2^%d must be rejected", logSize)
+		// the size check runs before every other consistency check, so this
+		// pins the rejection on the cap and not on a later mismatch
+		require.ErrorContains(t, err, "bad domain size", "Size 2^%d", logSize)
+	}
+}
